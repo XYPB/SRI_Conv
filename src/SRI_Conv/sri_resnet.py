@@ -262,6 +262,7 @@ class SRI_ResNet(nn.Module):
                                        ri_split_ratio=ri_split_ratio[3], ri_k=self.ri_k[3],
                                        ri_conv_size=self.ri_conv_size[3])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten(1)
         self.fc = nn.Linear(8 * inplanes * block.expansion, num_classes)
 
         for m in self.modules():
@@ -338,10 +339,10 @@ class SRI_ResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.avgpool(x)
-        x = torch.flatten(x, 1)
+        x = self.flatten(x)
         x = self.fc(x)
 
-        return F.log_softmax(x, dim=1)
+        return x
 
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)

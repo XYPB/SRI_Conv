@@ -4,7 +4,7 @@
 
 **This is just an initial DEMO for test use**
 
-version: 0.0.1
+version: 0.0.2
 
 ### Requirement:
 ```bash
@@ -14,6 +14,7 @@ version: 0.0.1
 ```
 
 ### Usage
-```bash
-python setup.py install
+```python
+>>> import SRI_Conv
+>>> sri_conv = SRI_Conv.SRI_Conv2d(3, 16, 3)
 ```

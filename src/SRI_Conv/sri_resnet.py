@@ -63,6 +63,7 @@ class SRIBasicBlock(nn.Module):
             raise ValueError('BasicBlock only supports groups=1 and base_width=64')
         if dilation > 1:
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        self.stride = stride
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         conv1 = sri_convkxk(ri_conv_size, inplanes, planes, 
                             kernel_shape=kernel_shape, 
@@ -83,7 +84,6 @@ class SRIBasicBlock(nn.Module):
                                 ri_k=ri_k)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
-        self.stride = stride
         
     def forward(self, x: Tensor) -> Tensor:
         identity = x
@@ -136,6 +136,7 @@ class SRIBottleneck(nn.Module):
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.)) * groups
         ri_groups = width if ri_groups != 1 else 1
+        self.stride = stride
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
@@ -156,7 +157,6 @@ class SRIBottleneck(nn.Module):
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
-        self.stride = stride
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x

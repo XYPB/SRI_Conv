@@ -1,0 +1,34 @@
+Metadata-Version: 2.1
+Name: SRI_Conv
+Version: 0.0.1
+Summary: Official package for 'Symmetric Rotation-Invariant Convolutional Kernel'
+Author-email: "Yuexi Du, Nicha Dvornek, John Onofrey" <yuexi.du@yale.edu>
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: scipy>=1.9.1
+Requires-Dist: numpy>=1.23.1
+Requires-Dist: torch>=1.13.0
+
+# Official Pypi Implementation of "SRI-Conv: Symmetric Rotation-Invariant Convolutional Kernel"
+*Yuexi Du, Nicha, Dvornek, John Onofrey*
+*Yale University*
+
+**This is just an initial DEMO for test use**
+
+version: 0.0.1
+
+### Requirement:
+```bash
+"scipy>=1.9.1",
+"numpy>=1.23.1",
+"torch>=1.13.0"
+```
+
+### Usage
+```bash
+python setup.py install
+```

@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+src/SRI_Conv/sri_conv.py
+src/SRI_Conv/sri_resnet.py
+src/SRI_Conv/utils.py
+src/SRI_Conv.egg-info/PKG-INFO
+src/SRI_Conv.egg-info/SOURCES.txt
+src/SRI_Conv.egg-info/dependency_links.txt
+src/SRI_Conv.egg-info/requires.txt
+src/SRI_Conv.egg-info/top_level.txt

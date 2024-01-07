@@ -2,7 +2,9 @@ import torch.nn as nn
 from .sri_conv import SRI_Conv2d
 
 def convert_to_sri_conv(model, kernel_shape='o', train_index_mat=False, ri_conv_size=5, ri_groups=1, ri_k=None, force_circular=False):
-    '''Recursively replace Conv layers to SRI_Conv layers.
+    '''
+    Recursively replace Conv layers to SRI_Conv layers.
+    If convolutional layer with stride >= 2 found, add AvgPool2d before it.
     '''
     state = {'counter': 0}
 

@@ -241,7 +241,7 @@ class SRI_ResNet(nn.Module):
                                 padding=2, bias=False, kernel_shape=kernel_shape, 
                                 train_index_mat=train_index_mat, 
                                 force_circular=force_circular)
-        self.bn1 = norm_layer(1, self.inplanes, eps=1e-6)
+        self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
 
         self.maxpool = nn.Identity()

@@ -7,6 +7,12 @@
 
 version: 1.0.1
 
+### Installation
+
+```bash
+pip install SRI-Conv
+```
+
 
 ### Requirement:
 ```bash

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SRI_Conv"
+version = "0.0.1"
+authors = [
+  { name="Yuexi Du, Nicha Dvornek, John Onofrey", email="yuexi.du@yale.edu" },
+]
+description = "Official package for 'Symmetric Rotation-Invariant Convolutional Kernel'"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "scipy>=1.9.1",
+    "numpy>=1.23.1",
+    "torch>=1.13.0"
+]

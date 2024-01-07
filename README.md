@@ -5,7 +5,7 @@
 
 **This is the initial official release of SRI_Conv**
 
-version: 1.0.0
+version: 1.0.1
 
 
 ### Requirement:
@@ -14,6 +14,8 @@ version: 1.0.0
 "numpy>=1.23.1",
 "torch>=1.13.0"
 ```
+
+**Note**: Using lower version of torch and numpy should be fine given that we didn't use any new feature in the new torch version, but we do suggest you to follow the required dependencies. If you have to use the different version of torch/numpy, you may also try to install the package from source code at [project repo](https://github.com/XYPB/SRI_Conv).
 
 ### Usage
 ```python

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "SRI_Conv"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Yuexi Du, Nicha Dvornek, John Onofrey", email="yuexi.du@yale.edu" },
 ]
@@ -22,3 +22,7 @@ dependencies = [
     "numpy>=1.23.1",
     "torch>=1.13.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/XYPB/SRI_Conv"
+Issue = "https://github.com/XYPB/SRI_Conv/issues"

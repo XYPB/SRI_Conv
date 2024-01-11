@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: SRI_Conv
-Version: 1.0.2
+Version: 1.0.3
 Summary: Official package for 'Symmetric Rotation-Invariant Convolutional Kernel'
 Author-email: "Yuexi Du, Nicha Dvornek, John Onofrey" <yuexi.du@yale.edu>
 Project-URL: Homepage, https://github.com/XYPB/SRI_Conv
@@ -22,7 +22,7 @@ Requires-Dist: torch>=1.13.0
 
 **This is the initial official release of SRI_Conv**
 
-version: 1.0.2
+version: 1.0.3
 
 ### Installation
 
@@ -49,4 +49,6 @@ pip install SRI-Conv
 >>> conv_out = sri_conv(x)
 >>> sri_r18 = sri_resnet18()
 >>> output = sri_r18(x)
+# To reproduce the SRI-ResNet18 used in the paper, use:
+>>> sri_r18 = sri_resnet18(ri_conv_size=[9, 9, 5, 5], skip_first_maxpool=True)
 ```

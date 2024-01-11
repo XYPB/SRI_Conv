@@ -5,7 +5,7 @@
 
 **This is the initial official release of SRI_Conv**
 
-version: 1.0.2
+version: 1.0.3
 
 ### Installation
 

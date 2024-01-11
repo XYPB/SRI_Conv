@@ -182,6 +182,21 @@ class SRIBottleneck(nn.Module):
 
 
 class SRI_ResNet(nn.Module):
+    """
+    Here we only introduce new parameters for SRI_ResNet.
+    
+    Args:
+        large_conv: if True, use 5x5 conv in the first layer, otherwise use 3x3 conv.
+        kernel_shape: shape of the SRI convolutional kernel. default: 'o'
+        train_index_mat: if True, train the index matrix. default: False
+        ri_conv_size: size of the SRI convolutional kernel, can be a list of length 4. default: 3
+        deepwise_ri: if True, use deepwise SRI convolution. default: False
+        inplanes: number of base channels. default: 64
+        layer_stride: per-layer stride for each stage in the ResNet. default: [1, 2, 2, 2]
+        ri_k: number of bands in the index matrix. default: None
+        force_circle: if True, force the SRI weight matrix to be circular. default: False
+        skip_first_maxpool: if True, skip the first maxpool layer, set True when processing small images. default: False
+    """
 
     def __init__(
         self,
@@ -199,10 +214,10 @@ class SRI_ResNet(nn.Module):
         ri_conv_size: Union[int, list] = 3,
         deepwise_ri: bool = False,
         inplanes: int = 64,
-        ri_split_ratio: Type[Union[float, List[float]]] = 0.5,
         layer_stride: Type[Union[int, List[int]]] = [1, 2, 2, 2],
         ri_k: Union[int, list] = None,
         force_circular: bool = False,
+        skip_first_maxpool: bool = False,
         **kwargs,
     ) -> None:
         super(SRI_ResNet, self).__init__()
@@ -216,10 +231,6 @@ class SRI_ResNet(nn.Module):
         self.deepwise_ri = deepwise_ri
         self.ri_k = _repeat(ri_k, 4)
         self.force_circular = force_circular
-        if isinstance(ri_split_ratio, float):
-            ri_split_ratio = [ri_split_ratio for _ in range(4)]
-        else:
-            ri_split_ratio = ri_split_ratio
         if isinstance(layer_stride, float):
             layer_stride = [layer_stride for _ in range(4)]
         else:
@@ -244,23 +255,22 @@ class SRI_ResNet(nn.Module):
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
 
-        self.maxpool = nn.Identity()
+        if skip_first_maxpool:
+            self.maxpool = nn.Identity()
+        else:
+            self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.layer1 = self._make_layer(block, inplanes, layers[0], stride=layer_stride[0],
-                                       ri_split_ratio=ri_split_ratio[0], ri_k=self.ri_k[0],
-                                       ri_conv_size=self.ri_conv_size[0])
+                                       ri_k=self.ri_k[0], ri_conv_size=self.ri_conv_size[0])
         self.layer2 = self._make_layer(block, 2*inplanes, layers[1], stride=layer_stride[1],
                                        dilate=replace_stride_with_dilation[0],
-                                       ri_split_ratio=ri_split_ratio[1], ri_k=self.ri_k[1],
-                                       ri_conv_size=self.ri_conv_size[1])
+                                       ri_k=self.ri_k[1], ri_conv_size=self.ri_conv_size[1])
         self.layer3 = self._make_layer(block, 4*inplanes, layers[2], stride=layer_stride[2],
                                        dilate=replace_stride_with_dilation[1],
-                                       ri_split_ratio=ri_split_ratio[2], ri_k=self.ri_k[2],
-                                       ri_conv_size=self.ri_conv_size[2])
+                                       ri_k=self.ri_k[2], ri_conv_size=self.ri_conv_size[2])
         self.layer4 = self._make_layer(block, 8*inplanes, layers[3], stride=layer_stride[3],
                                        dilate=replace_stride_with_dilation[2],
-                                       ri_split_ratio=ri_split_ratio[3], ri_k=self.ri_k[3],
-                                       ri_conv_size=self.ri_conv_size[3])
+                                       ri_k=self.ri_k[3], ri_conv_size=self.ri_conv_size[3])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten(1)
         self.fc = nn.Linear(8 * inplanes * block.expansion, num_classes)
@@ -290,8 +300,7 @@ class SRI_ResNet(nn.Module):
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
     def _make_layer(self, block: Type[Union[SRIBasicBlock, SRIBottleneck]], planes: int, blocks: int,
-                    stride: int = 1, dilate: bool = False, ri_split_ratio: float = 0.5,
-                    ri_conv_size: int = 3, ri_k: int = None) -> nn.Sequential:
+                    stride: int = 1, dilate: bool = False, ri_conv_size: int = 3, ri_k: int = None) -> nn.Sequential:
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -311,8 +320,7 @@ class SRI_ResNet(nn.Module):
                             self.base_width, previous_dilation, norm_layer, 
                             kernel_shape=self.kernel_shape, train_index_mat=self.train_index_mat,
                             ri_conv_size=ri_conv_size, ri_groups=ri_groups,
-                            ri_split_ratio=ri_split_ratio, large_conv=self.large_conv,
-                            ri_k=ri_k, force_circular=self.force_circular))
+                            large_conv=self.large_conv, ri_k=ri_k, force_circular=self.force_circular))
         self.inplanes = planes * block.expansion
         ri_groups = planes if self.deepwise_ri else 1
         for _ in range(1, blocks):
@@ -321,8 +329,8 @@ class SRI_ResNet(nn.Module):
                                 norm_layer=norm_layer, kernel_shape=self.kernel_shape, 
                                 train_index_mat=self.train_index_mat,
                                 ri_conv_size=ri_conv_size, ri_groups=ri_groups,
-                                ri_split_ratio=ri_split_ratio, large_conv=self.large_conv,
-                                ri_k=ri_k, force_circular=self.force_circular))
+                                large_conv=self.large_conv,
+ ri_k=ri_k, force_circular=self.force_circular))
 
         return nn.Sequential(*layers)
 

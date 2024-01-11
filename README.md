@@ -32,4 +32,6 @@ pip install SRI-Conv
 >>> conv_out = sri_conv(x)
 >>> sri_r18 = sri_resnet18()
 >>> output = sri_r18(x)
+# To reproduce the SRI-ResNet18 used in the paper, use:
+>>> sri_r18 = sri_resnet18(ri_conv_size=[9, 9, 5, 5], skip_first_maxpool=True)
 ```

@@ -2,6 +2,7 @@ LICENSE
 README.md
 pyproject.toml
 src/SRI_Conv/__init__.py
+src/SRI_Conv/sri_cnn.py
 src/SRI_Conv/sri_conv.py
 src/SRI_Conv/sri_resnet.py
 src/SRI_Conv/transforms.py

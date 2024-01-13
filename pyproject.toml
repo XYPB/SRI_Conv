@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "SRI_Conv"
-version = "1.0.4"
+version = "1.0.7"
 authors = [
   { name="Yuexi Du, Nicha Dvornek, John Onofrey", email="yuexi.du@yale.edu" },
 ]
@@ -18,9 +18,9 @@ classifiers = [
 ]
 
 dependencies = [
-    "scipy>=1.9.1",
-    "numpy>=1.23.1",
-    "torch>=1.13.0"
+    "scipy>=1.9.0",
+    "numpy>=1.22.0",
+    "torch>=1.8.0"
 ]
 
 [project.urls]

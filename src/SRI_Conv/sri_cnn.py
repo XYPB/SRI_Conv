@@ -79,6 +79,7 @@ class SRI_Net(nn.Module):
             self.dropout5 = nn.Identity()
 
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten(1)
 
         self.fc = nn.Sequential(
             nn.Linear(hidden_channels[4], n_classes))
@@ -94,7 +95,7 @@ class SRI_Net(nn.Module):
         x = self.dropout5(x)
 
         x = self.pool(x)
-        x = torch.flatten(x, 1)
+        x = self.flatten(x)
         x = self.fc(x)
         return x
     

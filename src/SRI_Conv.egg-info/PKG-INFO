@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: SRI_Conv
-Version: 1.0.7
+Version: 1.0.8
 Summary: Official package for 'Symmetric Rotation-Invariant Convolutional Kernel'
 Author-email: "Yuexi Du, Nicha Dvornek, John Onofrey" <yuexi.du@yale.edu>
 Project-URL: Homepage, https://github.com/XYPB/SRI_Conv
@@ -22,7 +22,7 @@ Requires-Dist: torch>=1.8.0
 
 **This is the initial official release of SRI_Conv**
 
-version: 1.0.7
+version: 1.0.8
 
 ### Installation
 

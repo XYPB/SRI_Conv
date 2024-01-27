@@ -10,7 +10,7 @@ from torch import Tensor
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from torch.nn.common_types import _size_2_t
+from torch.nn.common_types import _size_1_t, _size_2_t, _size_3_t
 
 def _ntuple(n):
     def parse(x):
@@ -74,10 +74,10 @@ class _SRI_ConvNd(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        kernel_size: _size_2_t,
-        stride: _size_2_t = 1,
-        padding: Union[str, _size_2_t] = 0,
-        dilation: _size_2_t = 1,
+        kernel_size: Tuple[int, ...],
+        stride: Tuple[int, ...] = 1,
+        padding: Union[str, Tuple[int, ...]] = 0,
+        dilation: Tuple[int, ...] = 1,
         transposed: bool = False,
         groups: int = 1,
         bias: bool = True,
@@ -229,6 +229,13 @@ class _SRI_ConvNd(nn.Module):
         return super().train(mode)
 
 
+    def _make_weight_matrix(self, weight):
+        # Note that einsum is generally faster than batch matrix multiplication 
+        weight = torch.einsum('ijkw,ijk->ijw', self.weight_index_mat, weight)
+        weight = weight.reshape(self.weight_matrix_shape)
+        return weight
+
+
     def _make_weight_index_mat(
         self, kernel_shape, 
         index_mat_C_in, 
@@ -240,9 +247,83 @@ class _SRI_ConvNd(nn.Module):
     def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]) -> Tensor:
         ...
 
-    def _make_weight_matrix(self, weight):
-        ...
 
+
+class SRI_Conv1d(_SRI_ConvNd):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_1_t,
+        stride: _size_1_t = 1,
+        padding: Union[str, _size_1_t] = 0,
+        dilation: _size_1_t = 1,
+        transposed: bool = False,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = 'zeros',
+        kernel_shape: str = 'o', # ['o', 's']
+        ri_k: int = None,
+        train_index_mat: bool = False,
+        inference_accelerate: bool = True,
+        force_circular: bool = False,
+        device = None,
+        dtype = None,
+    ) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        kernel_size = _single(kernel_size)
+        stride = _single(stride)
+        dilation = _single(dilation)
+        padding = padding if isinstance(padding, str) else _single(padding)
+        super(SRI_Conv1d, self).__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation,
+            transposed, groups, bias, padding_mode, kernel_shape, ri_k, train_index_mat, 
+            inference_accelerate, force_circular, **factory_kwargs)
+        
+    def _make_weight_index_mat(
+        self, kernel_shape, 
+        index_mat_C_in, 
+        index_mat_C_out,
+        factory_kwargs
+    ):
+        weight_index_mats = []
+        _, _, H = self.weight_matrix_shape
+        if kernel_shape == 's':
+            raise NotImplementedError()
+        elif kernel_shape == 'o':
+            D = np.ones((H))
+            D[H//2] = 0
+            D = ndimage.distance_transform_edt(D)
+            max_dist = (H // 2) + 0.5 if self.force_circular else D.max()
+            num_levels = self.ri_k + 1 if self.force_circular else self.ri_k
+            levels = np.linspace(D.min(), max_dist, num=num_levels)
+            for i in range(num_levels):
+                if i == num_levels - 1:
+                    if self.force_circular:
+                        continue
+                    idx = (D==levels[i]).astype(int)
+                else:
+                    idx = ((D>=levels[i]) & (D<levels[i+1])).astype(int)
+                level_mat = torch.tensor(idx, **factory_kwargs)[None, None, :, :]
+                weight_index_mats.append(level_mat.reshape(-1))
+        weight_index_mats = torch.stack(weight_index_mats, dim=0)
+        weight_index_mats = weight_index_mats.to(torch.float32)
+        weight_index_mats = weight_index_mats.expand((index_mat_C_in, index_mat_C_out, -1, -1))
+        return weight_index_mats
+
+    def _conv_forward(self, input, weight, bias):
+        if self.padding_mode != 'zeros':
+            return F.conv1d(F.pad(input, self._reversed_padding_repeated_twice, mode=self.padding_mode),
+                            weight, bias, self.stride, _single(0), self.dilation, self.groups)
+        return F.conv1d(input, weight, bias, self.stride,
+                        self.padding, self.dilation, self.groups)
+
+    def forward(self, input):
+        if not self.training and self.inference_accelerate:
+            weight_matrix = self.infer_weight_matrix
+        else:
+            weight_matrix = self._make_weight_matrix(self.weight)
+        return self._conv_forward(input, weight_matrix, self.bias)
 
 
 class SRI_Conv2d(_SRI_ConvNd):
@@ -316,14 +397,6 @@ class SRI_Conv2d(_SRI_ConvNd):
         weight_index_mats = weight_index_mats.expand((index_mat_C_in, index_mat_C_out, -1, -1))
         return weight_index_mats
 
-
-    def _make_weight_matrix(self, weight):
-        # Note that einsum is generally faster than batch matrix multiplication 
-        weight = torch.einsum('ijkw,ijk->ijw', self.weight_index_mat, weight)
-        weight = weight.reshape(self.weight_matrix_shape)
-        return weight
-
-
     def _conv_forward(self, input, weight, bias):
         if self.padding_mode != 'zeros':
             return F.conv2d(F.pad(input, self._reversed_padding_repeated_twice, mode=self.padding_mode),
@@ -331,6 +404,85 @@ class SRI_Conv2d(_SRI_ConvNd):
         return F.conv2d(input, weight, bias, self.stride,
                         self.padding, self.dilation, self.groups)
 
+    def forward(self, input):
+        if not self.training and self.inference_accelerate:
+            weight_matrix = self.infer_weight_matrix
+        else:
+            weight_matrix = self._make_weight_matrix(self.weight)
+        return self._conv_forward(input, weight_matrix, self.bias)
+
+
+class SRI_Conv3d(_SRI_ConvNd):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_3_t,
+        stride: _size_3_t = 1,
+        padding: Union[str, _size_3_t] = 0,
+        dilation: _size_3_t = 1,
+        transposed: bool = False,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = 'zeros',
+        kernel_shape: str = 'o', # ['o', 's']
+        ri_k: int = None,
+        train_index_mat: bool = False,
+        inference_accelerate: bool = True,
+        force_circular: bool = False,
+        device = None,
+        dtype = None,
+    ) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        kernel_size = _triple(kernel_size)
+        stride = _triple(stride)
+        dilation = _triple(dilation)
+        padding = padding if isinstance(padding, str) else _triple(padding)
+        super(SRI_Conv3d, self).__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation,
+            transposed, groups, bias, padding_mode, kernel_shape, ri_k, train_index_mat, 
+            inference_accelerate, force_circular, **factory_kwargs)
+
+    def _make_weight_index_mat(
+        self, kernel_shape, 
+        index_mat_C_in, 
+        index_mat_C_out,
+        factory_kwargs
+    ):
+        weight_index_mats = []
+        _, _, H, W, L = self.weight_matrix_shape
+        if kernel_shape == 's':
+            raise NotImplementedError()
+        elif kernel_shape == 'o':
+            D = np.ones((H, W, L))
+            D[(H//2, W//2, L//2)] = 0
+            D = ndimage.distance_transform_edt(D)
+            max_dist = (H // 2) + 0.5 if self.force_circular else D.max()
+            num_levels = self.ri_k + 1 if self.force_circular else self.ri_k
+            levels = np.linspace(D.min(), max_dist, num=num_levels)
+            for i in range(num_levels):
+                if i == num_levels - 1:
+                    if self.force_circular:
+                        continue
+                    idx = (D==levels[i]).astype(int)
+                else:
+                    idx = ((D>=levels[i]) & (D<levels[i+1])).astype(int)
+                level_mat = torch.tensor(idx, **factory_kwargs)[None, None, :, :, :]
+                weight_index_mats.append(level_mat.reshape(-1))
+        weight_index_mats = torch.stack(weight_index_mats, dim=0)
+        weight_index_mats = weight_index_mats.to(torch.float32)
+        weight_index_mats = weight_index_mats.expand((index_mat_C_in, index_mat_C_out, -1, -1))
+        return weight_index_mats
+
+    def _conv_forward(self, input, weight, bias):
+        if self.padding_mode != 'zeros':
+            return F.conv3d(
+                F.pad(
+                    input, self._reversed_padding_repeated_twice, mode=self.padding_mode
+                ),
+                weight, bias, self.stride, _triple(0), self.dilation, self.groups)
+        return F.conv3d(input, weight, bias, self.stride,
+                        self.padding, self.dilation, self.groups)
 
     def forward(self, input):
         if not self.training and self.inference_accelerate:

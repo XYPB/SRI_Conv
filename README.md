@@ -5,7 +5,11 @@
 
 **This is the initial official release of SRI_Conv**
 
-version: 1.1.0
+version: 1.1.1
+
+### News
+
+`SRI_Conv1d` and `SRI_Conv3d` are also available now.
 
 ### Installation
 

@@ -6,6 +6,7 @@ from typing import List, Union, Tuple, Optional
 from scipy import ndimage
 import numpy as np
 import torch
+from torch import Tensor
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
@@ -33,7 +34,7 @@ def _reverse_repeat_tuple(t, n):
     return tuple(x for x in reversed(t) for _ in range(n))
 
 
-class SRI_Conv2d(nn.Module):
+class _SRI_ConvNd(nn.Module):
     
     r"""
     Official implementation of Symmetric Rotation Invariant Conv2d in PyTorch.
@@ -89,11 +90,8 @@ class SRI_Conv2d(nn.Module):
         device = None,
         dtype = None,
     ) -> None:
+        # TODO: this part goes to individual conv
         factory_kwargs = {'device': device, 'dtype': dtype}
-        kernel_size = _pair(kernel_size)
-        stride = _pair(stride)
-        dilation = _pair(dilation)
-        padding = padding if isinstance(padding, str) else _pair(padding)
         super().__init__()
         if in_channels % groups != 0:
             raise ValueError('in_channels must be divisible by groups')
@@ -209,9 +207,74 @@ class SRI_Conv2d(nn.Module):
         return s.format(**self.__dict__)
 
     def __setstate__(self, state):
-        super(SRI_Conv2d, self).__setstate__(state)
+        super(_SRI_ConvNd, self).__setstate__(state)
         if not hasattr(self, 'padding_mode'):
             self.padding_mode = 'zeros'
+
+    def clip_index_mat(self, eps=0.1):
+        if not self.train_index_mat:
+            return
+        # only clip the index mat after each param update
+        _max = self.default_weight_index_mat + eps
+        _min = self.default_weight_index_mat - eps
+        self.weight_index_mat.data = torch.clamp(self.weight_index_mat, min=_min, max=_max)
+
+    def train(self, mode=True):
+        if not isinstance(mode, bool):
+            raise ValueError("training mode is expected to be boolean")
+        if self.inference_accelerate and not mode:
+            self.infer_weight_matrix = self._make_weight_matrix(self.weight)
+        else:
+            self.infer_weight_matrix = None
+        return super().train(mode)
+
+
+    def _make_weight_index_mat(
+        self, kernel_shape, 
+        index_mat_C_in, 
+        index_mat_C_out,
+        factory_kwargs
+    ):
+        ...
+
+    def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]) -> Tensor:
+        ...
+
+    def _make_weight_matrix(self, weight):
+        ...
+
+
+
+class SRI_Conv2d(_SRI_ConvNd):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_2_t,
+        stride: _size_2_t = 1,
+        padding: Union[str, _size_2_t] = 0,
+        dilation: _size_2_t = 1,
+        transposed: bool = False,
+        groups: int = 1,
+        bias: bool = True,
+        padding_mode: str = 'zeros',
+        kernel_shape: str = 'o', # ['o', 's']
+        ri_k: int = None,
+        train_index_mat: bool = False,
+        inference_accelerate: bool = True,
+        force_circular: bool = False,
+        device = None,
+        dtype = None,
+    ) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        kernel_size = _pair(kernel_size)
+        stride = _pair(stride)
+        dilation = _pair(dilation)
+        padding = padding if isinstance(padding, str) else _pair(padding)
+        super(SRI_Conv2d, self).__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation,
+            transposed, groups, bias, padding_mode, kernel_shape, ri_k, train_index_mat, 
+            inference_accelerate, force_circular, **factory_kwargs)
 
     def _make_weight_index_mat(
         self, kernel_shape, 
@@ -277,25 +340,6 @@ class SRI_Conv2d(nn.Module):
         return self._conv_forward(input, weight_matrix, self.bias)
 
 
-    def clip_index_mat(self, eps=0.1):
-        if not self.train_index_mat:
-            return
-        # only clip the index mat after each param update
-        _max = self.default_weight_index_mat + eps
-        _min = self.default_weight_index_mat - eps
-        self.weight_index_mat.data = torch.clamp(self.weight_index_mat, min=_min, max=_max)
-
-
-    def train(self, mode=True):
-        if not isinstance(mode, bool):
-            raise ValueError("training mode is expected to be boolean")
-        if self.inference_accelerate and not mode:
-            self.infer_weight_matrix = self._make_weight_matrix(self.weight)
-        else:
-            self.infer_weight_matrix = None
-        return super().train(mode)
-
-
 class SRI_ConvTranspose2d(SRI_Conv2d):
     def __init__(
         self,
@@ -308,16 +352,20 @@ class SRI_ConvTranspose2d(SRI_Conv2d):
         groups=1,
         bias=True,
         padding_mode='zeros',
-        device=None,
-        dtype=None,
-        kernel_shape='s',
-        train_index_mat=False,
+        kernel_shape='o',
         ri_k=None,
-        index_mat_in_channels=False,
-        index_mat_out_channels=False
+        train_index_mat=False,
+        inference_accelerate: bool = True,
+        force_circular: bool = False,
+        device = None,
+        dtype = None,
     ) -> None:
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, True, groups, bias, padding_mode, device, dtype, kernel_shape, train_index_mat, ri_k, index_mat_in_channels, index_mat_out_channels)
-
+        if padding_mode != 'zeros':
+            raise ValueError('Only "zeros" padding mode is supported for {}'.format(self.__class__.__name__))
+        super(SRI_ConvTranspose2d, self).__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias,
+            padding_mode, kernel_shape, ri_k, train_index_mat, inference_accelerate, force_circular,
+            device, dtype)
 
     # dilation being an optional parameter is for backwards
     # compatibility
@@ -362,7 +410,6 @@ class SRI_ConvTranspose2d(SRI_Conv2d):
 
             ret = res
         return ret
-
 
     def forward(self, input, output_size = None):
         if self.padding_mode != 'zeros':

@@ -321,7 +321,7 @@ class SRI_Conv1d(_SRI_ConvNd):
     def forward(self, input):
         if not self.training and self.inference_accelerate:
             weight_matrix = self.infer_weight_matrix
-            weight_matrix.to(device=input.device, dtype=input.dtype)
+            weight_matrix = weight_matrix.to(device=input.device, dtype=input.dtype)
         else:
             weight_matrix = self._make_weight_matrix(self.weight)
         return self._conv_forward(input, weight_matrix, self.bias)
@@ -408,7 +408,7 @@ class SRI_Conv2d(_SRI_ConvNd):
     def forward(self, input):
         if not self.training and self.inference_accelerate:
             weight_matrix = self.infer_weight_matrix
-            weight_matrix.to(device=input.device, dtype=input.dtype)
+            weight_matrix = weight_matrix.to(device=input.device, dtype=input.dtype)
         else:
             weight_matrix = self._make_weight_matrix(self.weight)
         return self._conv_forward(input, weight_matrix, self.bias)
@@ -489,7 +489,7 @@ class SRI_Conv3d(_SRI_ConvNd):
     def forward(self, input):
         if not self.training and self.inference_accelerate:
             weight_matrix = self.infer_weight_matrix
-            weight_matrix.to(device=input.device, dtype=input.dtype)
+            weight_matrix = weight_matrix.to(device=input.device, dtype=input.dtype)
         else:
             weight_matrix = self._make_weight_matrix(self.weight)
         return self._conv_forward(input, weight_matrix, self.bias)

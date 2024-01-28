@@ -5,7 +5,7 @@
 
 **This is the initial official release of SRI_Conv**
 
-version: 1.1.1
+version: 1.1.2
 
 ### News
 

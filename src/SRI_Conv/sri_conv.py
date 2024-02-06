@@ -56,6 +56,9 @@ class _SRI_ConvNd(nn.Module):
         train_index_mat (bool, optional): If ``True``, train the index matrix. Default: ``False``
         inference_accelerate (bool, optional): If ``True``, accelerate inference by pre-computing the weight matrix. Default: ``True``
         force_circular (bool, optional): If ``True``, force the kernel to be circular by ignoring corner part. Default: ``False``
+        gaussian_smooth_kernel (bool, optional): If ``True``, diffuse the weight index mat with gaussian distribution. Default: ``False``
+        train_gaussian_sigma (bool, optional): If ``True``, train the sigma of gaussian distribution. Default: ``False``
+        gaussian_sigma_scale (float, optional): Scale of sigma of gaussian distribution. Default: ``2.355``
         device (torch.device, optional): Device to use. Default: ``None``
         dtype (torch.dtype, optional): Data type to use. Default: ``None``
     
@@ -87,6 +90,9 @@ class _SRI_ConvNd(nn.Module):
         train_index_mat: bool = False,
         inference_accelerate: bool = True,
         force_circular: bool = False,
+        gaussian_smooth_kernel = False,
+        train_gaussian_sigma = False,
+        gaussian_sigma_scale = 2.355,
         device = None,
         dtype = None,
     ) -> None:
@@ -128,6 +134,8 @@ class _SRI_ConvNd(nn.Module):
         self.train_index_mat = train_index_mat
         self.inference_accelerate = inference_accelerate
         self.force_circular = force_circular
+        self.gaussian_smooth_kernel = gaussian_smooth_kernel
+        self.train_gaussian_sigma = train_gaussian_sigma
 
         self.ri_k = (kernel_size[0] // 2) + 1
         if self.kernel_shape == 'o' and not self.force_circular:
@@ -173,6 +181,20 @@ class _SRI_ConvNd(nn.Module):
             self.weight_index_mat.requires_grad = True
         else:
             self.register_buffer('weight_index_mat', weight_index_mat)
+
+        if self.gaussian_smooth_kernel:
+            mus = torch.arange(self.ri_k, **factory_kwargs)
+            sigmas = torch.empty(self.ri_k, **factory_kwargs)
+            # init sigma to be FWHM of ri_k (bands width)
+            sigmas[:] = self.ri_k / gaussian_sigma_scale
+            # Register parameters/buffers
+            self.register_buffer('mus', mus)
+            if self.train_gaussian_sigma:
+                self.sigmas = nn.Parameter(sigmas, requires_grad=True)
+            else:
+                self.register_buffer('sigmas', sigmas)
+        else:
+            self.register_buffer('sigmas', None)
 
     def reset_parameters(self) -> None:
         # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
@@ -231,7 +253,27 @@ class _SRI_ConvNd(nn.Module):
 
     def _make_weight_matrix(self, weight):
         # Note that einsum is generally faster than batch matrix multiplication 
-        weight = torch.einsum('ijkw,ijk->ijw', self.weight_index_mat, weight)
+        if self.gaussian_smooth_kernel:
+            # diffuse the weight index mat with gaussian distribution
+            # This step is necessary to make the sigma value differentiable
+            # Clamp sigma to avoid nan
+            # Empirically best choice for sigma range is [1e-2, 2*ri_k]
+            sigmas = torch.clamp(self.sigmas, min=1e-2, max=2*self.ri_k)
+            # No need to re-parameterization trick since no sampling involved
+            dist = torch.distributions.normal.Normal(self.mus, sigmas)
+            # need to consider wether to normalize the probability
+            # Normalization will results in difference between each band
+            # and there is no need since the weight matrix will learn the scale by itself
+            # if self.normalize_gaussian_prob:
+            #     prob = prob / prob.sum(dim=1, keepdim=True)
+            loc = torch.arange(self.ri_k, device=self.sigmas.device, dtype=self.sigmas.dtype)[:, None]
+            prob = dist.log_prob(loc.repeat(1, self.ri_k)).exp() # [ri_k, ri_k]
+            prob = prob.permute(1, 0)
+            weight_index_mat = torch.einsum('lk,ijkw->ijlw', prob, self.weight_index_mat)
+        else:
+            weight_index_mat = self.weight_index_mat
+
+        weight = torch.einsum('ijkw,ijk->ijw', weight_index_mat, weight)
         weight = weight.reshape(self.weight_matrix_shape)
         return weight
 

@@ -5,11 +5,12 @@
 
 **This is the initial official release of SRI_Conv**
 
-version: 1.1.3
+version: 1.2.0
 
 ### News
 
-`SRI_Conv1d` and `SRI_Conv3d` are also available now.
+- [1.2.0] Gaussian Smooth Kernel is available now!
+- [1.1.0] `SRI_Conv1d` and `SRI_Conv3d` are also available now.
 
 ### Installation
 

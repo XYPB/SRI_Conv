@@ -90,9 +90,9 @@ class _SRI_ConvNd(nn.Module):
         train_index_mat: bool = False,
         inference_accelerate: bool = True,
         force_circular: bool = False,
-        gaussian_smooth_kernel = False,
-        train_gaussian_sigma = False,
-        gaussian_sigma_scale = 2.355,
+        gaussian_smooth_kernel: bool = False,
+        train_gaussian_sigma: bool = False,
+        gaussian_sigma_scale: float = 2.355,
         device = None,
         dtype = None,
     ) -> None:
@@ -309,6 +309,9 @@ class SRI_Conv1d(_SRI_ConvNd):
         train_index_mat: bool = False,
         inference_accelerate: bool = True,
         force_circular: bool = False,
+        gaussian_smooth_kernel: bool = False,
+        train_gaussian_sigma: bool = False,
+        gaussian_sigma_scale: float = 2.355,
         device = None,
         dtype = None,
     ) -> None:
@@ -320,7 +323,8 @@ class SRI_Conv1d(_SRI_ConvNd):
         super(SRI_Conv1d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             transposed, groups, bias, padding_mode, kernel_shape, ri_k, train_index_mat, 
-            inference_accelerate, force_circular, **factory_kwargs)
+            inference_accelerate, force_circular, gaussian_smooth_kernel, 
+            train_gaussian_sigma, gaussian_sigma_scale, **factory_kwargs)
         
     def _make_weight_index_mat(
         self, kernel_shape, 
@@ -387,6 +391,9 @@ class SRI_Conv2d(_SRI_ConvNd):
         train_index_mat: bool = False,
         inference_accelerate: bool = True,
         force_circular: bool = False,
+        gaussian_smooth_kernel: bool = False,
+        train_gaussian_sigma: bool = False,
+        gaussian_sigma_scale: float = 2.355,
         device = None,
         dtype = None,
     ) -> None:
@@ -398,7 +405,8 @@ class SRI_Conv2d(_SRI_ConvNd):
         super(SRI_Conv2d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             transposed, groups, bias, padding_mode, kernel_shape, ri_k, train_index_mat, 
-            inference_accelerate, force_circular, **factory_kwargs)
+            inference_accelerate, force_circular, gaussian_smooth_kernel, 
+            train_gaussian_sigma, gaussian_sigma_scale, **factory_kwargs)
 
     def _make_weight_index_mat(
         self, kernel_shape, 
@@ -474,6 +482,9 @@ class SRI_Conv3d(_SRI_ConvNd):
         train_index_mat: bool = False,
         inference_accelerate: bool = True,
         force_circular: bool = False,
+        gaussian_smooth_kernel: bool = False,
+        train_gaussian_sigma: bool = False,
+        gaussian_sigma_scale: float = 2.355,
         device = None,
         dtype = None,
     ) -> None:
@@ -485,7 +496,8 @@ class SRI_Conv3d(_SRI_ConvNd):
         super(SRI_Conv3d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             transposed, groups, bias, padding_mode, kernel_shape, ri_k, train_index_mat, 
-            inference_accelerate, force_circular, **factory_kwargs)
+            inference_accelerate, force_circular, gaussian_smooth_kernel, 
+            train_gaussian_sigma, gaussian_sigma_scale, **factory_kwargs)
 
     def _make_weight_index_mat(
         self, kernel_shape, 

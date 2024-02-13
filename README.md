@@ -3,9 +3,9 @@
 
 *Yale University*
 
-**This is the initial official release of SRI_Conv**
+**This is the official release of SRI_Conv**
 
-version: 1.2.0
+version: 1.2.1
 
 ### News
 

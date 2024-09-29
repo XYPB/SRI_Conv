@@ -32,4 +32,4 @@ def convert_to_sri_conv(model, kernel_shape='o', train_index_mat=False, ri_conv_
                 state['counter'] += 1
             _replace_handler(target, state)
 
-    return _replace_handler(model, state)
+    _replace_handler(model, state)

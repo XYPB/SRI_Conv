@@ -14,7 +14,7 @@ def convert_to_sri_conv(model, kernel_shape='o', train_index_mat=False, ri_conv_
                 layer = SRI_Conv2d(
                     target.in_channels,
                     target.out_channels,
-                    kernel_size=target.kernel_size,
+                    kernel_size=ri_conv_size,
                     stride=1,
                     padding=target.padding,
                     dilation=target.dilation,
@@ -22,7 +22,6 @@ def convert_to_sri_conv(model, kernel_shape='o', train_index_mat=False, ri_conv_
                     bias=target.bias is not None,
                     kernel_shape=kernel_shape,
                     train_index_mat=train_index_mat,
-                    ri_conv_size=ri_conv_size,
                     ri_groups=ri_groups,
                     ri_k=ri_k,
                     force_circular=force_circular)
@@ -32,4 +31,4 @@ def convert_to_sri_conv(model, kernel_shape='o', train_index_mat=False, ri_conv_
                 state['counter'] += 1
             _replace_handler(target, state)
 
-    _replace_handler(model, state)
+    return _replace_handler(model, state)
